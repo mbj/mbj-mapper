@@ -193,35 +193,27 @@ mappers = {
 
 env = DataMapper::Environment.new(mappers)
 
+# Non tracked interactions
 markus = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'Markus') }
 p markus # => Person instance
-
 john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
 p john # => nil
-
 # Now lets add John
-#
-# Okay we did not deal with db side id generation, for now ;)
-#
+# Does not deal with db side id generation, for now ;)
 env.mapper(Person).insert(Person.new(:id => 5, :firstname => 'John', :lastname => 'Doe'))
-
 # Now we have John
 john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
-p john # => nil
-
+p john # => <Person firstname="John" ...>
 # Remove John
 env.mapper(Person).delete(john)
-
 # Now he's gone
 john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
 p john # => nil
-
 p env.mapper(Person).all # => Enumerable<Person>
-
 # Pass an explicit restriction, might be from crazy joining some stuff....
 p env.mapper(Person).all(relation) # => Enumerable<Person>
 
-# More fun ahead with dm-session integration
+# Tracked interactions
 env.session do |session|
   first = session.mapper(Person).one do |relation|
     relation.restrict(:firstname => 'Markus')
@@ -231,5 +223,6 @@ env.session do |session|
     relation.restrict(:firstname => 'Markus')
   end
 
+  # IM catches double load
   p first.equal?(second) # => true
 end
