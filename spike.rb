@@ -56,7 +56,7 @@ module DataMapper
         # Add itentity here for dm-session support
 
         def tuple
-          object
+          Veritas::Tuple.new(header, header.each_with_object([]) { |attribute, array| array << object[attribute.name] })
         end
         memoize :tuple, :freezer => :noop
       end
@@ -65,6 +65,17 @@ module DataMapper
 
   class Mapper
     include Concord.new(:relation, :transformer)
+    
+    def insert(object)
+      other = Veritas::Relation.new(relation.header, [dump(object)])
+      @relation = relation.insert(other)
+      self
+    end
+
+    def delete(object)
+      other = Veritas::Relation.new(relation.header, [dump(object)])
+      @relation = relation.delete(other)
+    end
 
     def all(relation = self.relation)
       relation = yield relation if block_given?
@@ -87,6 +98,10 @@ module DataMapper
     end
 
   private
+
+    def dump(object)
+      transformer.dump(object)
+    end
 
     def load(tuple)
       transformer.load(tuple)
@@ -143,6 +158,23 @@ env = DataMapper::Environment.new(mappers)
 markus = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'Markus') }
 p markus # => Person instance
 
+john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
+p john # => nil
+
+# Now lets add John
+#
+# Okay we did not deal with db side id generation, for now ;)
+#
+env.mapper(Person).insert(Person.new(:id => 5, :firstname => 'John', :lastname => 'Doe'))
+
+# Now we have John
+john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
+p john # => nil
+
+# Remove John
+env.mapper(Person).delete(john)
+
+# Now he's gone
 john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
 p john # => nil
 
