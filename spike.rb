@@ -84,8 +84,8 @@ module DataMapper
     class Transformer
       include Concord.new(:session, :transformer)
 
-      def load(object)
-        loader = transformer.loader(object)
+      def load(tuple)
+        loader = transformer.loader(tuple)
         tracker.fetch(loader.identity) do
           tracker[loader.identity] = loader.object
         end
