@@ -130,7 +130,7 @@ tuples = [
   [ 4, 'Martin', 'Gamsjäger' ]
 ]
 
-relation = Veritas::Relation.new(header, tuples).sort_by { |r| [r.id.asc, r.firstname.asc, r.lastname.asc] }
+relation = Veritas::Relation.new(header, tuples)
 
 #pp Veritas::Sexp::Generator.visit(relation)
 
