@@ -1,6 +1,4 @@
 #encoding: utf-8
-$: << 'lib'
-require 'dm-session'
 require 'virtus'
 require 'concord'
 require 'veritas'
@@ -69,7 +67,7 @@ module DataMapper
   end
 
   class Session
-    include Concord.new(:environment)
+    include Adamantium::Flat, Concord.new(:environment)
 
     def mapper(model)
       mapper = environment.mapper(model)
