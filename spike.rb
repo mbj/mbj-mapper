@@ -214,6 +214,8 @@ p env.mapper(Person).all # => Enumerable<Person>
 p env.mapper(Person).all(relation) # => Enumerable<Person>
 
 # Tracked interactions
+#
+# Exactly the same API as with the env object, just identity tracked and identity deduplicated.
 env.session do |session|
   first = session.mapper(Person).one do |relation|
     relation.restrict(:firstname => 'Markus')
