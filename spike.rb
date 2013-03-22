@@ -41,7 +41,9 @@ module DataMapper
       class Loader
         include Adamantium::Flat, Concord.new(:model, :header, :tuple)
 
-        # Add itentity here for dm-session support
+        def identity
+          tuple.call(:id)
+        end
 
         def object
           model.new(tuple.header.each_with_object({}) { |attribute, document| document[attribute.name] = tuple.call(attribute) })
@@ -53,7 +55,10 @@ module DataMapper
       class Dumper
         include Adamantium::Flat, Concord.new(:model, :header, :object)
 
-        # Add itentity here for dm-session support
+        def identity
+          object.id
+        end
+
 
         def tuple
           Veritas::Tuple.new(header, header.each_with_object([]) { |attribute, array| array << object[attribute.name] })
@@ -61,6 +66,36 @@ module DataMapper
         memoize :tuple, :freezer => :noop
       end
     end
+  end
+
+  class Session
+    include Concord.new(:environment)
+
+    def mapper(model)
+      mapper = environment.mapper(model)
+      Mapper.new(mapper.relation, Transformer.new(self, mapper.transformer))
+    end
+
+    def tracker
+      {}
+    end
+    memoize :tracker, :freezer => :noop
+
+    class Transformer
+      include Concord.new(:session, :transformer)
+
+      def load(object)
+        loader = transformer.loader(object)
+        tracker.fetch(loader.identity) do
+          tracker[loader.identity] = loader.object
+        end
+      end
+
+      def tracker
+        session.tracker
+      end
+    end
+
   end
 
   class Mapper
@@ -126,6 +161,12 @@ module DataMapper
   class Environment
     include Adamantium::Flat, Concord.new(:mappers)
 
+    def session
+      session = Session.new(self) 
+      yield session if block_given?
+      session
+    end
+
     def mapper(model)
       mappers.fetch(model)
     end
@@ -146,7 +187,6 @@ tuples = [
 ]
 
 relation = Veritas::Relation.new(header, tuples)
-
 #pp Veritas::Sexp::Generator.visit(relation)
 
 mappers = {
@@ -184,3 +224,14 @@ p env.mapper(Person).all # => Enumerable<Person>
 p env.mapper(Person).all(relation) # => Enumerable<Person>
 
 # More fun ahead with dm-session integration
+env.session do |session|
+  first = session.mapper(Person).one do |relation|
+    relation.restrict(:firstname => 'Markus')
+  end
+  
+  second = session.mapper(Person).one do |relation|
+    relation.restrict(:firstname => 'Markus')
+  end
+
+  p first.equal?(second) # => true
+end
