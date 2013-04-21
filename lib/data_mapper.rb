@@ -1,17 +1,7 @@
-#encoding: utf-8
-require 'virtus'
 require 'concord'
-require 'veritas'
-require 'veritas-sexp'
-require 'pp'
-
-class Person
-  include Virtus::ValueObject
-
-  attribute :id, Integer
-  attribute :firstname, String
-  attribute :lastname, String
-end
+require 'virtus'
+require 'axiom'
+require 'axiom-sexp'
 
 module DataMapper
 
@@ -59,7 +49,7 @@ module DataMapper
 
 
         def tuple
-          Veritas::Tuple.new(header, header.each_with_object([]) { |attribute, array| array << object[attribute.name] })
+          Axiom::Tuple.new(header, header.each_with_object([]) { |attribute, array| array << object[attribute.name] })
         end
         memoize :tuple, :freezer => :noop
       end
@@ -100,13 +90,13 @@ module DataMapper
     include Concord.new(:relation, :transformer)
     
     def insert(object)
-      other = Veritas::Relation.new(relation.header, [dump(object)])
+      other = Axiom::Relation.new(relation.header, [dump(object)])
       @relation = relation.insert(other)
       self
     end
 
     def delete(object)
-      other = Veritas::Relation.new(relation.header, [dump(object)])
+      other = Axiom::Relation.new(relation.header, [dump(object)])
       @relation = relation.delete(other)
     end
 
@@ -147,7 +137,7 @@ module DataMapper
     # https://github.com/mbj/veritas/commit/ef70583330f4743d4a58374ef7d2077a7d996fc7#commitcomment-2863926
     #
     def sort(relation)
-      if relation.kind_of?(Veritas::Relation::Operation::Order)
+      if relation.kind_of?(Axiom::Relation::Operation::Order)
         return relation
       end
       # There must be a shortcut for this ;)
@@ -172,59 +162,3 @@ module DataMapper
   end
 end
 
-header = Veritas::Relation::Header.coerce([[:id, Integer], [:firstname, String], [:lastname, String]])
-
-# Basic 1:1 virtus transformer 
-transformer = DataMapper::Transformer::Virtus.new(Person, header)
-
-tuples = [
-  [ 1, 'Markus', 'Schirp'    ], 
-  [ 2, 'Dan',    'Kubb'      ], 
-  [ 3, 'Piotr',  'Solnica'   ], 
-  [ 4, 'Martin', 'Gamsjäger' ]
-]
-
-relation = Veritas::Relation.new(header, tuples)
-#pp Veritas::Sexp::Generator.visit(relation)
-
-mappers = {
-  Person => DataMapper::Mapper.new(relation, transformer)
-}.freeze
-
-env = DataMapper::Environment.new(mappers)
-
-# Non tracked interactions
-markus = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'Markus') }
-p markus # => Person instance
-john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
-p john # => nil
-# Now lets add John
-# Does not deal with db side id generation, for now ;)
-env.mapper(Person).insert(Person.new(:id => 5, :firstname => 'John', :lastname => 'Doe'))
-# Now we have John
-john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
-p john # => <Person firstname="John" ...>
-# Remove John
-env.mapper(Person).delete(john)
-# Now he's gone
-john = env.mapper(Person).one { |relation| relation.restrict(:firstname => 'John') }
-p john # => nil
-p env.mapper(Person).all # => Enumerable<Person>
-# Pass an explicit restriction, might be from crazy joining some stuff....
-p env.mapper(Person).all(relation) # => Enumerable<Person>
-
-# Tracked interactions
-#
-# Exactly the same API as with the env object, just identity tracked and identity deduplicated.
-env.session do |session|
-  first = session.mapper(Person).one do |relation|
-    relation.restrict(:firstname => 'Markus')
-  end
-  
-  second = session.mapper(Person).one do |relation|
-    relation.restrict(:firstname => 'Markus')
-  end
-
-  # IM catches double load
-  p first.equal?(second) # => true
-end

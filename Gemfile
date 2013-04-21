@@ -2,8 +2,9 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'dm-session',     :path => '../dm-session' # :git => 'https://github.com/mbj/dm-session.git'
+gem 'dm-session', :path => '../dm-session' # :git => 'https://github.com/mbj/dm-session.git'
 
+gem 'axiom-sexp', :git => 'https://github.com/mbj/axiom-sexp.git'
 gem 'virtus'
 gem 'abstract_type'
 gem 'concord'
